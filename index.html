@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ICHD-3 Headache Diagnostic Tool</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        h1 {
+            color: #2c3e50;
+        }
+        .container {
+            background-color: white;
+            border-radius: 8px;
+            padding: 25px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        .question-container {
+            margin-bottom: 20px;
+        }
+        .options label {
+            display: block;
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .options label:hover {
+            background-color: #e9e9e9;
+        }
+        .options input[type="radio"] {
+            margin-right: 10px;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px;
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        .progress-container {
+            width: 100%;
+            height: 10px;
+            background-color: #e0e0e0;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .progress-bar {
+            height: 100%;
+            border-radius: 5px;
+            background-color: #3498db;
+            transition: width 0.3s ease;
+        }
+        .result-section {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #f9f9f9;
+            border-left: 5px solid #3498db;
+            border-radius: 0 5px 5px 0;
+        }
+        .hidden {
+            display: none;
+        }
+        .result-title {
+            color: #2c3e50;
+            margin-top: 0;
+        }
+        .restart-btn {
+            background-color: #2ecc71;
+        }
+        .restart-btn:hover {
+            background-color: #27ae60;
+        }
+        .disclaimer {
+            font-size: 14px;
+            font-style: italic;
+            margin-top: 30px;
+            color: #777;
+        }
+        .prevalence-meter {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f0f7fb;
+            border-radius: 5px;
+            border-left: 4px solid #3498db;
+        }
+        .prevalence-bar {
+            height: 20px;
+            background-color: #e0e0e0;
+            border-radius: 10px;
+            margin-top: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+        .prevalence-fill {
+            height: 100%;
+            background-color: #3498db;
+            border-radius: 10px;
+            transition: width 1s ease;
+        }
+        .prevalence-label {
+            font-size: 14px;
+            color: #555;
+            margin-top: 5px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .prevalence-text {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+        .alternative-diagnoses {
+            margin-top: 30px;
+            padding: 15px;
+            background-color: #fafafa;
+            border-radius: 5px;
+            border-left: 4px solid #e67e22;
+        }
+        .alt-diagnosis {
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+            border-left: 3px solid #e67e22;
+        }
+        .warning-box {
+            background-color: #fdedec;
+            border-left: 4px solid #e74c3c;
+            padding: 15px;
+            margin-top: 20px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+            <header>
+        <h1>ICHD-3 Headache Diagnostic Tool</h1>
+        <p>Answer the following questions to help identify your headache type based on ICHD-3 criteria and prevalence data</p>
+        <p><strong>New in version 2.0:</strong> Now includes population prevalence information and suggests alternative diagnoses</p>
+    </header>
+
+    <div class="container">
+        <div class="progress-container">
+            <div class="progress-bar" id="progress-bar" style="width: 0%"></div>
+        </div>
+
+        <div id="question-section">
+            <div class="question-container">
+                <h2 id="question-text">Loading questions...</h2>
+                <div class="options" id="options-container">
+                    <!-- Options will be inserted here -->
+                </div>
+            </div>
+            <button id="next-button" disabled>Next Question</button>
+        </div>
+
+        <div id="result-section" class="result-section hidden">
+            <h2 class="result-title">Diagnostic Result</h2>
+            <div id="result-content"></div>
+            <div id="prevalence-info" class="prevalence-meter"></div>
+            <div id="alternative-diagnoses" class="alternative-diagnoses hidden"></div>
+            <button id="restart-button" class="restart-btn">Start Over</button>
+        </div>
+
+        <div class="disclaimer">
+            <p>This tool is for informational purposes only and does not replace professional medical advice. Please consult a healthcare provider for proper diagnosis and treatment.</p>
+        </div>
+    </div>
+
+    <script>
+        // ICHD-3 Decision Tree Implementation with Prevalence Weights
+        const questions = {
+            start: {
+                text: "Have you experienced 5 or more headache attacks, each lasting 4-72 hours (untreated or unsuccessfully treated)?",
+                options: [
+                    { text: "Yes", next: "migraine_criteria_1" },
+                    { text: "No", next: "tension_type_check" },
+                    { text: "Does not apply to me", next: "tension_type_check" }
+                ]
+            },
+            
+            // Migraine branch
+            migraine_criteria_1: {
+                text: "Does your headache have at least 2 of these characteristics?",
+                options: [
+                    { text: "Unilateral location (affecting one side of the head)", value: "unilateral" },
+                    { text: "Pulsating quality", value: "pulsating" },
+                    { text: "Moderate or severe pain intensity", value: "severe" },
+                    { text: "Aggravation by or causing avoidance of routine physical activity", value: "physical_aggravation" },
+                    { text: "Fewer than 2 of the above", next: "tension_type_check" },
+                    { text: "Does not apply to me", next: "tension_type_check" }
+                ],
+                multiSelect: true,
+                minSelections: 2,
+                next: "migraine_criteria_2"
+            },
+            
+            migraine_criteria_2: {
+                text: "During your headache, do you experience at least one of the following?",
+                options: [
+                    { text: "Nausea and/or vomiting", value: "nausea" },
+                    { text: "Both photophobia (sensitivity to light) and phonophobia (sensitivity to sound)", value: "photo_phono" },
+                    { text: "Neither of the above", next: "tension_type_check" },
+                    { text: "Does not apply to me", next: "tension_type_check" }
+                ],
+                next: "migraine_aura_check"
+            },
+            
+            migraine_aura_check: {
+                text: "Before your headache begins, do you experience temporary aura symptoms? (e.g., visual disturbances like flashing lights or blind spots, sensory changes, speech disturbances)",
+                options: [
+                    { text: "Yes", next: "aura_characteristics" },
+                    { text: "No", next: "migraine_frequency" },
+                    { text: "Does not apply to me", next: "migraine_frequency" }
+                ]
+            },
+            
+            aura_characteristics: {
+                text: "Which of these best describes your aura symptoms?",
+                options: [
+                    { text: "Visual symptoms (e.g., flickering lights, spots, lines, loss of vision)", value: "visual" },
+                    { text: "Sensory symptoms (e.g., pins and needles, numbness)", value: "sensory" },
+                    { text: "Speech disturbance", value: "speech" },
+                    { text: "Motor weakness", value: "motor" },
+                    { text: "Brainstem symptoms (e.g., vertigo, tinnitus, hearing loss)", value: "brainstem" },
+                    { text: "Does not apply to me", next: "migraine_frequency" }
+                ],
+                multiSelect: true,
+                next: "aura_duration"
+            },
+            
+            aura_duration: {
+                text: "How long do your aura symptoms typically last?",
+                options: [
+                    { text: "Each symptom lasts 5-60 minutes", next: "migraine_with_aura" },
+                    { text: "At least one symptom lasts more than 60 minutes but less than 7 days", next: "hemiplegic_check" },
+                    { text: "Symptoms last less than 5 minutes or more than 7 days", next: "migraine_frequency" },
+                    { text: "Does not apply to me", next: "migraine_frequency" }
+                ]
+            },
+            
+            hemiplegic_check: {
+                text: "Do your aura symptoms include motor weakness (e.g., weakness on one side of the body)?",
+                options: [
+                    { text: "Yes", next: "hemiplegic_migraine" },
+                    { text: "No", next: "migraine_with_aura" },
+                    { text: "Does not apply to me", next: "migraine_with_aura" }
+                ]
+            },
+            
+            migraine_frequency: {
+                text: "How many days per month do you typically experience headache?",
+                options: [
+                    { text: "Less than 15 days per month", next: "migraine_without_aura" },
+                    { text: "15 or more days per month for more than 3 months", next: "medication_overuse" },
+                    { text: "Does not apply to me", next: "tension_type_check" }
+                ]
+            },
+            
+            medication_overuse: {
+                text: "Do you regularly use pain medication for headaches on 10 or more days per month?",
+                options: [
+                    { text: "Yes", next: "chronic_migraine_with_medication_overuse" },
+                    { text: "No", next: "chronic_migraine" },
+                    { text: "Does not apply to me", next: "chronic_migraine" }
+                ]
+            },
+            
+            // Tension-type headache branch
+            tension_type_check: {
+                text: "Have you experienced recurrent episodes of headache lasting from 30 minutes to 7 days?",
+                options: [
+                    { text: "Yes", next: "tension_characteristics" },
+                    { text: "No", next: "cluster_check" },
+                    { text: "Does not apply to me", next: "cluster_check" }
+                ]
+            },
+            
+            tension_characteristics: {
+                text: "Does your headache have at least 2 of these characteristics?",
+                options: [
+                    { text: "Bilateral location (both sides of the head)", value: "bilateral" },
+                    { text: "Pressing or tightening (non-pulsating) quality", value: "pressing" },
+                    { text: "Mild or moderate intensity", value: "mild_moderate" },
+                    { text: "Not aggravated by routine physical activity", value: "no_aggravation" },
+                    { text: "Fewer than 2 of the above", next: "cluster_check" },
+                    { text: "Does not apply to me", next: "cluster_check" }
+                ],
+                multiSelect: true,
+                minSelections: 2,
+                next: "tension_negative_features"
+            },
+            
+            tension_negative_features: {
+                text: "Which of these statements is true about your headaches?",
+                options: [
+                    { text: "No nausea or vomiting", value: "no_nausea" },
+                    { text: "No more than one of either photophobia or phonophobia", value: "limited_photo_phono" },
+                    { text: "I experience both nausea/vomiting AND significant light and sound sensitivity", next: "cluster_check" },
+                    { text: "Does not apply to me", next: "cluster_check" }
+                ],
+                multiSelect: true,
+                minSelections: 2,
+                next: "tension_frequency"
+            },
+            
+            tension_frequency: {
+                text: "How often do you experience these tension-type headaches?",
+                options: [
+                    { text: "Less than 1 day per month on average (less than 12 days per year)", next: "infrequent_episodic_tth" },
+                    { text: "1-14 days per month for at least 3 months", next: "frequent_episodic_tth" },
+                    { text: "15 or more days per month for more than 3 months", next: "chronic_tth" },
+                    { text: "Does not apply to me", next: "cluster_check" }
+                ]
+            },
+            
+            // Cluster headache branch
+            cluster_check: {
+                text: "Have you experienced severe or very severe unilateral pain in orbital, supraorbital, and/or temporal regions, lasting 15-180 minutes?",
+                options: [
+                    { text: "Yes", next: "cluster_symptoms" },
+                    { text: "No", next: "other_primary_headache" },
+                    { text: "Does not apply to me", next: "other_primary_headache" }
+                ]
+            },
+            
+            cluster_symptoms: {
+                text: "During your headache, do you experience at least one of these symptoms on the same side as the pain?",
+                options: [
+                    { text: "Conjunctival injection (red eye) and/or lacrimation (tearing)", value: "eye_symptoms" },
+                    { text: "Nasal congestion and/or rhinorrhea (runny nose)", value: "nasal_symptoms" },
+                    { text: "Eyelid edema (swelling)", value: "eyelid_edema" },
+                    { text: "Forehead and facial sweating", value: "sweating" },
+                    { text: "Miosis (pupil constriction) and/or ptosis (drooping eyelid)", value: "miosis_ptosis" },
+                    { text: "A sense of restlessness or agitation", value: "restlessness" },
+                    { text: "None of the above", next: "other_primary_headache" },
+                    { text: "Does not apply to me", next: "other_primary_headache" }
+                ],
+                multiSelect: true,
+                minSelections: 1,
+                next: "cluster_frequency"
+            },
+            
+            cluster_frequency: {
+                text: "How frequently do these attacks occur?",
+                options: [
+                    { text: "At least 5 attacks occurring in cluster periods lasting 7 days to 1 year, separated by pain-free remission periods", next: "episodic_cluster" },
+                    { text: "Attacks occurring for more than 1 year without remission or with remissions lasting less than 3 months", next: "chronic_cluster" },
+                    { text: "Does not apply to me", next: "other_primary_headache" }
+                ]
+            },
+            
+            // Other primary headaches
+            other_primary_headache: {
+                text: "Does your headache have any of these characteristics?",
+                options: [
+                    { text: "Stabbing pains lasting a few seconds to minutes", next: "primary_stabbing" },
+                    { text: "Pain exclusively in the distribution of the first branch of the trigeminal nerve (temple, forehead, eye region)", next: "trigeminal_autonomic" },
+                    { text: "Triggered by exertion, coughing, or straining", next: "exertional_headache" },
+                    { text: "Occurs during or after sexual activity", next: "sexual_headache" },
+                    { text: "Thunderclap onset (sudden severe headache reaching maximum intensity within 1 minute)", next: "secondary_check" },
+                    { text: "None of the above", next: "secondary_check" },
+                    { text: "Does not apply to me", next: "secondary_check" }
+                ]
+            },
+            
+            // Secondary headache check
+            secondary_check: {
+                text: "Do you have any of these concerning features with your headache?",
+                options: [
+                    { text: "First or worst headache of your life", value: "worst" },
+                    { text: "Recent trauma or injury to the head", value: "trauma" },
+                    { text: "Fever and neck stiffness", value: "fever" },
+                    { text: "New onset after age 50", value: "age_onset" },
+                    { text: "Neurological symptoms (confusion, weakness, vision changes, etc.)", value: "neuro" },
+                    { text: "None of the above", next: "unclassified_headache" },
+                    { text: "Does not apply to me", next: "unclassified_headache" }
+                ],
+                multiSelect: true,
+                minSelections: 1,
+                next: "secondary_headache"
+            },
+            
+            // Results with added prevalence data
+            migraine_without_aura: {
+                result: true,
+                title: "Possible Migraine without Aura (1.1)",
+                content: "Your symptoms are consistent with migraine without aura according to ICHD-3 criteria. Migraines without aura are characterized by recurrent headaches with specific features including moderate to severe pain intensity, pulsating quality, and aggravation by physical activity, accompanied by nausea/vomiting and/or sensitivity to light and sound.",
+                prevalence: {
+                    general: 12, // 12% prevalence in general population
+                    gender: {
+                        female: 18, // 18% in females
+                        male: 6    // 6% in males
+                    },
+                    description: "Migraine without aura is the most common type of migraine, affecting approximately 12% of the general population. It is more prevalent in women (18%) than in men (6%)."
+                },
+                weight: 5, // Diagnostic confidence weight (1-5 scale, with 5 being highest)
+                ichd_code: "1.1"
+            },
+            
+            migraine_with_aura: {
+                result: true,
+                title: "Possible Migraine with Aura (1.2)",
+                content: "Your symptoms are consistent with migraine with aura according to ICHD-3 criteria. This type of migraine includes temporary neurological symptoms (the aura) that typically develop gradually over 5-60 minutes and usually precede the headache. Common aura symptoms include visual disturbances, sensory symptoms, or speech/language disturbances.",
+                prevalence: {
+                    general: 4, // 4% prevalence in general population
+                    gender: {
+                        female: 6, // 6% in females
+                        male: 2   // 2% in males
+                    },
+                    description: "Migraine with aura affects approximately 4% of the general population. Like migraine without aura, it is more common in women than men. About 25-30% of people with migraine experience aura."
+                },
+                weight: 4, // Diagnostic confidence weight
+                ichd_code: "1.2"
+            },
+            
+            hemiplegic_migraine: {
+                result: true,
+                title: "Possible Hemiplegic Migraine (1.2.3)",
+                content: "Your symptoms suggest hemiplegic migraine, a rare subtype of migraine with aura that includes motor weakness. This condition requires medical attention as it can resemble other serious neurological conditions. Genetic testing may be recommended as some cases have a hereditary component.",
+                prevalence: {
+                    general: 0.01, // 0.01% prevalence in general population (very rare)
+                    description: "Hemiplegic migraine is a rare subtype of migraine, affecting less than 0.01% of the population. It can be familial (with a genetic component) or sporadic."
+                },
+                weight: 3, // Diagnostic confidence weight (lower due to rarity)
+                ichd_code: "1.2.3",
+                warning: "Hemiplegic migraine symptoms can resemble stroke or other serious neurological conditions. If you are experiencing weakness on one side of the body with headache for the first time, please seek immediate medical attention."
+            },
+            
+            chronic_migraine: {
+                result: true,
+                title: "Possible Chronic Migraine (1.3)",
+                content: "Your symptoms suggest chronic migraine, defined as headache occurring on 15 or more days per month for more than 3 months, which has the features of migraine on at least 8 days per month. Chronic migraine often requires preventive treatment strategies.",
+                prevalence: {
+                    general: 2, // 2% prevalence in general population
+                    description: "Chronic migraine affects approximately 2% of the general population. It often develops from episodic migraine and is associated with significant disability and reduced quality of life."
+                },
+                weight: 4, // Diagnostic confidence weight
+                ichd_code: "1.3"
+            },
+            
+            chronic_migraine_with_medication_overuse: {
+                result: true,
+                title: "Possible Chronic Migraine with Medication Overuse (1.3 + 8.2)",
+                content: "Your symptoms suggest chronic migraine complicated by medication overuse. Regular use of acute headache medications can lead to more frequent headaches. Treatment typically involves both migraine management and supervised withdrawal from overused medications.",
+                prevalence: {
+                    general: 1, // 1% prevalence in general population
+                    description: "Medication overuse headache affects approximately 1-2% of the general population. Among patients with chronic headache, 30-50% may have medication overuse headache. It is more common in those with primary headache disorders, particularly migraine."
+                },
+                weight: 4, // Diagnostic confidence weight
+                ichd_code: "1.3 + 8.2",
+                warning: "Medication overuse can perpetuate and worsen headaches. Abrupt discontinuation of medications may lead to withdrawal symptoms. Please consult a healthcare provider for guidance on proper withdrawal strategies."
+            },
+            
+            infrequent_episodic_tth: {
+                result: true,
+                title: "Possible Infrequent Episodic Tension-type Headache (2.1)",
+                content: "Your symptoms are consistent with infrequent episodic tension-type headache, characterized by episodes occurring less than once per month (less than 12 days per year). These headaches typically present as bilateral, pressing or tightening in quality, of mild to moderate intensity, and not aggravated by routine physical activity.",
+                prevalence: {
+                    general: 25, // 25% prevalence in general population
+                    description: "Infrequent episodic tension-type headache is very common, affecting about 25% of the general population. Due to its infrequent nature and typically mild to moderate severity, many people with this type of headache may not seek medical attention."
+                },
+                weight: 3, // Diagnostic confidence weight
+                ichd_code: "2.1"
+            },
+            
+            frequent_episodic_tth: {
+                result: true,
+                title: "Possible Frequent Episodic Tension-type Headache (2.2)",
+                content: "Your symptoms suggest frequent episodic tension-type headache, occurring on 1-14 days per month for at least 3 months. These headaches typically present as bilateral, pressing or tightening in quality, of mild to moderate intensity, and not aggravated by routine physical activity.",
+                prevalence: {
+                    general: 20, // 20% prevalence in general population
+                    description: "Frequent episodic tension-type headache affects approximately 20% of the general population. It is one of the most common headache types seen in primary care settings."
+                },
+                weight: 4, // Diagnostic confidence weight
+                ichd_code: "2.2"
+            },
+            
+            chronic_tth: {
+                result: true,
+                title: "Possible Chronic Tension-type Headache (2.3)",
+                content: "Your symptoms are consistent with chronic tension-type headache, which occurs on 15 or more days per month for more than 3 months. This condition often requires preventive treatment approaches and lifestyle modifications.",
+                prevalence: {
+                    general: 3, // 3% prevalence in general population
+                    description: "Chronic tension-type headache affects approximately 3% of the general population. It is associated with significant disability and decreased quality of life, and often requires comprehensive treatment strategies."
+                },
+                weight: 4, // Diagnostic confidence weight
+                ichd_code: "2.3"
+            },
+            
+            episodic_cluster: {
+                result: true,
+                title: "Possible Episodic Cluster Headache (3.1.1)",
+                content: "Your symptoms suggest episodic cluster headache, characterized by severe, strictly unilateral headaches accompanied by autonomic features (such as tearing, eye redness, nasal congestion). Episodes occur in cluster periods lasting from weeks to months, separated by remission periods.",
+                prevalence: {
+                    general: 0.1, // 0.1% prevalence in general population
+                    gender: {
+                        female: 0.04, // 0.04% in females
+                        male: 0.16    // 0.16% in males
+                    },
+                    description: "Episodic cluster headache is relatively rare, affecting approximately 0.1% of the general population. Unlike most primary headache disorders, it is more common in men than women, with a male-to-female ratio of about 3:1 to 4:1."
+                },
+                weight: 4, // Diagnostic confidence weight
+                ichd_code: "3.1.1"
+            },
+            
+            chronic_cluster: {
+                result: true,
+                title: "Possible Chronic Cluster Headache (3.1.2)",
+                content: "Your symptoms are consistent with chronic cluster headache, characterized by attacks occurring for more than one year without remission or with remission periods lasting less than three months. This condition typically requires specialized treatment from a headache specialist.",
+                prevalence: {
+                    general: 0.02, // 0.02% prevalence in general population
+                    description: "Chronic cluster headache is very rare, affecting approximately 0.02% of the general population. About 10-20% of patients with cluster headache have the chronic form, which is associated with significant disability."
+                },
+                weight: 3, // Diagnostic confidence weight (lower due to rarity)
+                ichd_code: "3.1.2"
+            },
+            
+            primary_stabbing: {
+                result: true,
+                title: "Possible Primary Stabbing Headache (4.7)",
+                content: "Your symptoms suggest primary stabbing headache (ice-pick headache), characterized by transient and localized stabs of pain in the head that occur spontaneously in the absence of organic disease.",
+                prevalence: {
+                    general: 2, // 2% prevalence in general population
+                    description: "Primary stabbing headache affects approximately 2% of the general population. It is more common in people with migraine or cluster headache, where the prevalence can be as high as 40%."
+                },
+                weight: 2, // Diagnostic confidence weight
+                ichd_code: "4.7"
+            },
+            
+            trigeminal_autonomic: {
+                result: true,
+                title: "Possible Trigeminal Autonomic Cephalalgia",
+                content: "Your symptoms may fit one of the trigeminal autonomic cephalalgias, a group of headache disorders characterized by unilateral head pain that occurs in association with ipsilateral cranial autonomic features. This category includes cluster headache, paroxysmal hemicrania, and SUNCT/SUNA.",
+                prevalence: {
+                    general: 0.3, // 0.3% prevalence in general population
+                    description: "Trigeminal autonomic cephalalgias as a group affect less than 1% of the general population. These include cluster headache (most common), paroxysmal hemicrania, and SUNCT/SUNA (both very rare)."
+                },
+                weight: 2, // Diagnostic confidence weight
+                ichd_code: "3.0"
+            },
+            
+            exertional_headache: {
+                result: true,
+                title: "Possible Primary Exercise Headache (4.2)",
+                content: "Your symptoms suggest primary exercise headache, which is brought on by and occurs only during or after physical exercise. While often benign, first episodes should be evaluated to rule out secondary causes.",
+                prevalence: {
+                    general: 1, // 1% prevalence in general population
+                    description: "Primary exercise headache affects approximately 1% of the general population. It is more common in those who engage in strenuous physical activities, particularly in hot weather or at high altitude."
+                },
+                weight: 3, // Diagnostic confidence weight
+                ichd_code: "4.2"
+            },
+            
+            sexual_headache: {
+                result: true,
+                title: "Possible Primary Headache Associated with Sexual Activity (4.3)",
+                content: "Your symptoms are consistent with headache associated with sexual activity, precipitated by sexual excitement. These headaches may be pre-orgasmic (dull, usually occipital) or orgasmic (explosive, sudden onset). First episodes warrant medical evaluation to exclude secondary causes like subarachnoid hemorrhage.",
+                prevalence: {
+                    general: 0.5, // 0.5% prevalence in general population
+                    gender: {
+                        female: 0.2, // 0.2% in females
+                        male: 0.8    // 0.8% in males
+                    },
+                    description: "Primary headache associated with sexual activity is relatively uncommon, affecting approximately 0.5% of the general population. It is more common in men than women, with a male-to-female ratio of about 4:1."
+                },
+                weight: 3, // Diagnostic confidence weight
+                ichd_code: "4.3",
+                warning: "First-time headache during sexual activity requires immediate medical evaluation to exclude potentially serious conditions like subarachnoid hemorrhage or arterial dissection."
+                },
+            
+            secondary_headache: {
+                result: true,
+                title: "Possible Secondary Headache - Medical Evaluation Recommended",
+                content: "Your symptoms include warning signs that may indicate a secondary headache (a headache caused by another medical condition). These types of headaches require prompt medical evaluation. Please consult a healthcare provider as soon as possible for proper assessment.",
+                prevalence: {
+                    general: 8, // 8% prevalence in general population with headache
+                    description: "Secondary headaches account for approximately 8% of all headaches seen in primary care settings. The prevalence varies widely based on the specific underlying cause, with some causes being quite rare."
+                },
+                weight: 5, // Diagnostic confidence weight (high due to importance of identification)
+                ichd_code: "5-12",
+                warning: "Secondary headaches can indicate serious underlying conditions that require prompt medical attention. If you're experiencing the worst headache of your life, headache with fever and neck stiffness, or new neurological symptoms, please seek immediate medical care."
+                },
+            
+            unclassified_headache: {
+                result: true,
+                title: "Headache Not Fully Classified",
+                content: "Based on your responses, your headache pattern doesn't clearly match a specific category in the ICHD-3 classification system. Headaches can be complex and may require professional evaluation for proper diagnosis. Please consult a healthcare provider for personalized assessment and treatment recommendations.",
+                prevalence: {
+                    general: 5, // 5% of headaches don't fit neatly into established categories
+                    description: "Approximately 5% of headaches do not fit clearly into established diagnostic categories. This may be due to overlapping symptoms, atypical presentations, or evolving conditions."
+                },
+                weight: 1, // Low diagnostic confidence weight
+                ichd_code: "14.1"
+                }
+            };
