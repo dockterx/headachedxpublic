@@ -159,7 +159,7 @@
     </style>
 </head>
 <body>
-            <header>
+    <header>
         <h1>ICHD-3 Headache Diagnostic Tool</h1>
         <p>Answer the following questions to help identify your headache type based on ICHD-3 criteria and prevalence data</p>
         <p><strong>New in version 2.0:</strong> Now includes population prevalence information and suggests alternative diagnoses</p>
@@ -593,7 +593,7 @@
                 weight: 3, // Diagnostic confidence weight
                 ichd_code: "4.3",
                 warning: "First-time headache during sexual activity requires immediate medical evaluation to exclude potentially serious conditions like subarachnoid hemorrhage or arterial dissection."
-                },
+            },
             
             secondary_headache: {
                 result: true,
@@ -606,7 +606,7 @@
                 weight: 5, // Diagnostic confidence weight (high due to importance of identification)
                 ichd_code: "5-12",
                 warning: "Secondary headaches can indicate serious underlying conditions that require prompt medical attention. If you're experiencing the worst headache of your life, headache with fever and neck stiffness, or new neurological symptoms, please seek immediate medical care."
-                },
+            },
             
             unclassified_headache: {
                 result: true,
@@ -618,25 +618,4 @@
                 },
                 weight: 1, // Low diagnostic confidence weight
                 ichd_code: "14.1"
-                }
-            };
-
-// Initialize the app when the page loads
-window.addEventListener('DOMContentLoaded', initApp);
-
-// Add this as a backup initialization method
-// Sometimes GitHub Pages has issues with DOMContentLoaded
-window.onload = function() {
-    if (document.getElementById('question-text').textContent === "Loading questions...") {
-        console.log("Backup initialization triggered");
-        initApp();
-    }
-};
-
-// Also add a direct call in case both events fail
-setTimeout(function() {
-    if (document.getElementById('question-text').textContent === "Loading questions...") {
-        console.log("Fallback initialization triggered");
-        initApp();
-    }
-}, 1000);
+            }
